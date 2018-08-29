@@ -4,7 +4,7 @@
   ![AndroidStudio](https://img.shields.io/badge/Android_Studio-3.1.4-brightgreen.svg)
   ![minSDK](https://img.shields.io/badge/minSDK-API_16-orange.svg?style=flat)
 
-  `Locationmanager` is a small wrapper for [Location Tracker)](https://developer.android.com/training/location/).
+  `Locationmanager` is a small wrapper for [Location Tracker](https://developer.android.com/training/location/).
 
   ## Installation
 
