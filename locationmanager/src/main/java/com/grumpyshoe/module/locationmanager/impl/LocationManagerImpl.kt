@@ -53,7 +53,7 @@ class LocationManagerImpl : LocationManager {
         this.onLastLocationFound = onLastLocationFound
         this.onNoLocationFound = onNoLocationFound
 
-        checkPermissionIsGranted(activity, Manifest.permission.ACCESS_FINE_LOCATION, REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION)
+        checkPermissionIsGranted(activity, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION)
 
     }
 
@@ -114,7 +114,7 @@ class LocationManagerImpl : LocationManager {
             // ...
 
 
-            checkPermissionIsGranted(activity, Manifest.permission.ACCESS_FINE_LOCATION, REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER)
+            checkPermissionIsGranted(activity, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER)
         }
 
         task.addOnFailureListener { exception ->
@@ -166,23 +166,30 @@ class LocationManagerImpl : LocationManager {
      * check for required permissions
      *
      */
-    private fun checkPermissionIsGranted(activity: Activity, permission: String, requestCode: Int): Boolean? {
+    private fun checkPermissionIsGranted(activity: Activity, permissionList: Array<String>, requestCode: Int): Boolean? {
 
-        if (ContextCompat.checkSelfPermission(activity, permission) != PackageManager.PERMISSION_GRANTED) {
+        val notGrantedPermissionList = mutableListOf<String>()
+        permissionList.forEachIndexed { index, permission ->
+            if (ContextCompat.checkSelfPermission(activity, permission) != PackageManager.PERMISSION_GRANTED){
+                notGrantedPermissionList.add(permission)
+            }
+        }
+
+        if (notGrantedPermissionList.isNotEmpty()) {
 
             // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(activity, notGrantedPermissionList.get(0))) {
 
                 Toast.makeText(activity.applicationContext, "Needed", Toast.LENGTH_SHORT).show()
 
-                ActivityCompat.requestPermissions(activity, arrayOf(permission), requestCode)
+                ActivityCompat.requestPermissions(activity, notGrantedPermissionList.toTypedArray(), requestCode)
 
                 // Show an explanation to the user *asynchronously* -- don't block
                 // this thread waiting for the user's response! After the user
                 // sees the explanation, try again to request the permission.
             } else {
                 // No explanation needed, we can request the permission.
-                ActivityCompat.requestPermissions(activity, arrayOf(permission), requestCode)
+                ActivityCompat.requestPermissions(activity, permissionList, requestCode)
 
                 // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
                 // app-defined int constant. The callback method gets the

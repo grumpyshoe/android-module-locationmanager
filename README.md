@@ -12,11 +12,23 @@
   implementation 'com.github.grumpyshoe:android-module-locationmanager:1.0.0'
   ```
 
+
   ## Usage
 
   - Get instance of LocationManager:
   ```
   val locationManager : LocationManager = LocationManagerImpl()
+  ```
+
+  In order to locate your device, the library will request the permissions
+  `android.permission.ACCESS_FINE_LOCATION` and `android.permission.ACCESS_COARSE_LOCATION`.
+  To handle to permission request result correctly delegate the response of `onRequestPermissionsResult` in your activity to the library like this:
+  ```
+  override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+          locationManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
+                  ?: super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+      }
   ```
 
   ### Get last known Location
@@ -45,12 +57,12 @@
           onLocationChange = { location ->
               // handle location data
           },
-          config = LocationManagerImpl.LocationTrackerConfig())
+          config = LocationTrackerConfig())
 
   ```
 
   #### Stop location tracking
-  To stop location tracking call `stopLocationTracker`. This should be done at LifeCycleEvent `onDestroy` at least to avoid any error during off screen input.
+  To stop location tracking call `stopLocationTracker`. This should be done at LifeCycleEvent `onDestroy` at least to avoid any error during off screen information.
   ```
   locationManager.stopLocationTracker()
 
