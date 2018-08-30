@@ -8,6 +8,18 @@
 
   ## Installation
 
+  - Add `jitpack`to your repositories in Project `build.gradle` :
+  ```
+  allprojects {
+      repositories {
+          ...
+          maven { url "https://jitpack.io" }
+      }
+      ...
+  }
+  ```
+
+  - Add dependency :
   ```
   implementation 'com.github.grumpyshoe:android-module-locationmanager:1.0.0'
   ```
@@ -25,10 +37,10 @@
   To handle to permission request result correctly delegate the response of `onRequestPermissionsResult` in your activity to the library like this:
   ```
   override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-          locationManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
-                  ?: super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+      locationManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
+              ?: super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-      }
+  }
   ```
 
   ### Get last known Location
