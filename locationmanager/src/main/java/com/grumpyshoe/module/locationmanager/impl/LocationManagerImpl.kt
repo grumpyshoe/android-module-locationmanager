@@ -15,6 +15,8 @@ import com.google.android.gms.location.*
 import com.google.android.gms.tasks.Task
 import com.grumpyshoe.module.locationmanager.LocationManager
 import com.grumpyshoe.module.locationmanager.models.LocationTrackerConfig
+import com.grumpyshoe.module.permissionmanager.PermissionManager
+import com.grumpyshoe.module.permissionmanager.impl.PermissionManagerImpl
 
 
 /**
@@ -30,13 +32,14 @@ class LocationManagerImpl : LocationManager {
     private val REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION = 123
     private val REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER = 345
     private val REQUEST_CHECK_SETTINGS_FOR_LOCATION_TRACKKER = 234
-    var fusedLocationClient: FusedLocationProviderClient? = null
-    var onLastLocationFound: ((Location) -> Unit)? = null
-    var onNoLocationFound: (() -> Unit)? = null
-    var onLocationChange: ((Location) -> Unit)? = null
-    var locationRequest: LocationRequest? = null
-    var lastTrackedLocation: Location? = null
-    var locationCallback: LocationCallback? = null
+    private var fusedLocationClient: FusedLocationProviderClient? = null
+    private var onLastLocationFound: ((Location) -> Unit)? = null
+    private var onNoLocationFound: (() -> Unit)? = null
+    private var onLocationChange: ((Location) -> Unit)? = null
+    private var locationRequest: LocationRequest? = null
+    private var lastTrackedLocation: Location? = null
+    private var locationCallback: LocationCallback? = null
+    private val permissionManager: PermissionManager = PermissionManagerImpl
 
 
     /**
@@ -53,7 +56,16 @@ class LocationManagerImpl : LocationManager {
         this.onLastLocationFound = onLastLocationFound
         this.onNoLocationFound = onNoLocationFound
 
-        checkPermissionIsGranted(activity, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION)
+        permissionManager.checkPermissions(
+                activity = activity,
+                permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                onPermissionResult = { permissionResult ->
+                    if(permissionResult.areAllGranted()) {
+                        getLastLocation()
+                    }
+                },
+                requestCode = REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION
+        )
 
     }
 
@@ -63,24 +75,7 @@ class LocationManagerImpl : LocationManager {
      *
      */
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean? {
-        if (requestCode == REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION) {
-            if (grantResults.isNotEmpty() && grantResults.first() == PackageManager.PERMISSION_GRANTED) {
-                getLastLocation()
-            } else {
-                //code for deny
-            }
-
-            return true
-        } else if (requestCode == REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER) {
-            if (grantResults.isNotEmpty() && grantResults.first() == PackageManager.PERMISSION_GRANTED) {
-                requestLocationUpdates()
-            } else {
-                //code for deny
-            }
-
-            return true
-        }
-        return false
+        return permissionManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
 
@@ -114,7 +109,16 @@ class LocationManagerImpl : LocationManager {
             // ...
 
 
-            checkPermissionIsGranted(activity, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER)
+            permissionManager.checkPermissions(
+                    activity = activity,
+                    permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                    onPermissionResult = { permissionResult ->
+                        if(permissionResult.areAllGranted()) {
+                            requestLocationUpdates()
+                        }
+                    },
+                    requestCode = REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER
+            )
         }
 
         task.addOnFailureListener { exception ->
@@ -162,53 +166,53 @@ class LocationManagerImpl : LocationManager {
     }
 
 
-    /**
-     * check for required permissions
-     *
-     */
-    private fun checkPermissionIsGranted(activity: Activity, permissionList: Array<String>, requestCode: Int): Boolean? {
-
-        val notGrantedPermissionList = mutableListOf<String>()
-        permissionList.forEachIndexed { index, permission ->
-            if (ContextCompat.checkSelfPermission(activity, permission) != PackageManager.PERMISSION_GRANTED){
-                notGrantedPermissionList.add(permission)
-            }
-        }
-
-        if (notGrantedPermissionList.isNotEmpty()) {
-
-            // Should we show an explanation?
-            if (ActivityCompat.shouldShowRequestPermissionRationale(activity, notGrantedPermissionList.get(0))) {
-
-                Toast.makeText(activity.applicationContext, "Needed", Toast.LENGTH_SHORT).show()
-
-                ActivityCompat.requestPermissions(activity, notGrantedPermissionList.toTypedArray(), requestCode)
-
-                // Show an explanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-            } else {
-                // No explanation needed, we can request the permission.
-                ActivityCompat.requestPermissions(activity, permissionList, requestCode)
-
-                // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
-                // app-defined int constant. The callback method gets the
-                // result of the request.
-            }
-
-            return null
-        } else {
-            // Permission has already been granted
-            if (requestCode == REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION) {
-                getLastLocation()
-            } else if (requestCode == REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER) {
-                requestLocationUpdates()
-            }
-            return true
-
-        }
-
-    }
+//    /**
+//     * check for required permissions
+//     *
+//     */
+//    private fun checkPermissionIsGranted(activity: Activity, permissionList: Array<String>, requestCode: Int): Boolean? {
+//
+//        val notGrantedPermissionList = mutableListOf<String>()
+//        permissionList.forEachIndexed { index, permission ->
+//            if (ContextCompat.checkSelfPermission(activity, permission) != PackageManager.PERMISSION_GRANTED){
+//                notGrantedPermissionList.add(permission)
+//            }
+//        }
+//
+//        if (notGrantedPermissionList.isNotEmpty()) {
+//
+//            // Should we show an explanation?
+//            if (ActivityCompat.shouldShowRequestPermissionRationale(activity, notGrantedPermissionList.get(0))) {
+//
+//                Toast.makeText(activity.applicationContext, "Needed", Toast.LENGTH_SHORT).show()
+//
+//                ActivityCompat.requestPermissions(activity, notGrantedPermissionList.toTypedArray(), requestCode)
+//
+//                // Show an explanation to the user *asynchronously* -- don't block
+//                // this thread waiting for the user's response! After the user
+//                // sees the explanation, try again to request the permission.
+//            } else {
+//                // No explanation needed, we can request the permission.
+//                ActivityCompat.requestPermissions(activity, permissionList, requestCode)
+//
+//                // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+//                // app-defined int constant. The callback method gets the
+//                // result of the request.
+//            }
+//
+//            return null
+//        } else {
+//            // Permission has already been granted
+//            if (requestCode == REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION) {
+//                getLastLocation()
+//            } else if (requestCode == REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER) {
+//                requestLocationUpdates()
+//            }
+//            return true
+//
+//        }
+//
+//    }
 
 
     /**

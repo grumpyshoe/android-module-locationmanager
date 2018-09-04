@@ -19,6 +19,7 @@ allprojects {
     repositories {
         google()
         jcenter()
+        maven { url "https://jitpack.io" }
     }
 
     ext {
@@ -28,8 +29,8 @@ allprojects {
         min_sdk_version = 16
         target_sdk_version = 27
         build_tools_version = "27.0.3"
-        version_code = 1
-        version_name = "1.0"
+        version_code = 2
+        version_name = "1.1.0"
 
         support_version = "27.1.1"
 
@@ -50,6 +51,7 @@ allprojects {
                 kotlin                : ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"),
                 anko                  : ("org.jetbrains.anko:anko-support-v4:0.10.5"),
                 constraint_layout     : ("com.android.support.constraint:constraint-layout:1.1.2"),
+                permission_manager    : ("com.github.grumpyshoe:android-module-permissionmanager:1.2.0")
 
         ]
     }
