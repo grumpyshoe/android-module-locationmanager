@@ -21,7 +21,7 @@
 
   - Add dependency :
   ```
-  implementation 'com.github.grumpyshoe:android-module-locationmanager:1.2.0'
+  implementation 'com.github.grumpyshoe:android-module-locationmanager:1.3.0'
   ```
 
 
