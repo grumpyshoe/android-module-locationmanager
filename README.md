@@ -21,7 +21,7 @@
 
   - Add dependency :
   ```
-  implementation 'com.github.grumpyshoe:android-module-locationmanager:1.1.0'
+  implementation 'com.github.grumpyshoe:android-module-locationmanager:1.2.0'
   ```
 
 
@@ -39,22 +39,25 @@
   override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
       locationManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
               ?: super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
   }
   ```
 
-  ### Get last known Location
-  Try to get last known connection with `getLastKnownPosition`.
-  ```
-  locationManager.getLastKnownPosition(
-          activity = this,
-          onLastLocationFound = { location ->
-              // handle location data
-          },
-          onNoLocationFound = {
-              // handle no location data
-          })
+ Also it's necessary to delegate the response of 'ònActivityResult`to your LocationManager instance
+   ```
+   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+           locationManager.onActivityResult(requestCode, resultCode, data)
+               ?: super.onActivityResult(requestCode, resultCode, data)
+   }
+   ```
 
+  ### Get last known Location
+  Try to get last known connection with `getLastKnownLocation`.
+  ```
+  locationManager.getLastKnownLocation(activity = this).observe(
+        this,
+        Observer<Location?> { location ->
+            // handle location data
+        })
   ```
 
 
@@ -65,12 +68,12 @@
   To start location tracking call `startLocationTracker`.
   ```
   locationManager.startLocationTracker(
-          activity = this ,
-          onLocationChange = { location ->
-              // handle location data
-          },
-          config = LocationTrackerConfig())
-
+      activity = this, config = LocationTrackerConfig()
+  ).observe(
+      this,
+      Observer<Location?> { location ->
+          // handle location data
+      })
   ```
 
   #### Stop location tracking
@@ -79,6 +82,16 @@
   locationManager.stopLocationTracker()
 
   ```
+
+  ### Customization
+  If the Permission is granted but the location provider is disabled a AlertDialog is shown. 
+  The options are 'Cancel' and 'Settings' to enable the Location Service again.
+  
+  For customizing the text that is shown at the AlertDialog the following string resources must be overridden at you app:
+   - `R.string.locationmanager_gps_network_not_enabled` (default: "Location Provider is not enabled. This Service is required otherwise no results will be posted.")
+   - `R.string.locationmanager_open_location_settings` (default: "Settings")
+   - `R.string.locationmanager_btn_cancel` (default: "Cancel")
+  
 
   ### Dependencies
   | Package  | Version  |
@@ -97,9 +110,9 @@
 
   ## Build Environment
   ```
-  Android Studio 3.1.4
-  Build #AI-173.4907809, built on July 23, 2018
-  JRE: 1.8.0_152-release-1024-b01 x86_64
-  JVM: OpenJDK 64-Bit Server VM by JetBrains s.r.o
-  Mac OS X 10.13.4
+    Android Studio 4.0.1
+    Build #AI-193.6911.18.40.6626763, built on June 25, 2020
+    Runtime version: 1.8.0_242-release-1644-b3-6222593 x86_64
+    VM: OpenJDK 64-Bit Server VM by JetBrains s.r.o
+    macOS 10.15.5
   ```

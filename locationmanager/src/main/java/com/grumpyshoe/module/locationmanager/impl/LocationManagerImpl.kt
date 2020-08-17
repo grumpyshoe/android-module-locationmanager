@@ -3,16 +3,23 @@ package com.grumpyshoe.module.locationmanager.impl
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
-import android.content.IntentSender
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.location.Location
-import android.support.v4.app.ActivityCompat
-import android.support.v4.content.ContextCompat
-import android.widget.Toast
-import com.google.android.gms.common.api.ResolvableApiException
-import com.google.android.gms.location.*
-import com.google.android.gms.tasks.Task
+import android.provider.Settings
+import android.util.Log
+import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.preference.PreferenceManager
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.grumpyshoe.locationmanager.R
 import com.grumpyshoe.module.locationmanager.LocationManager
 import com.grumpyshoe.module.locationmanager.models.LocationTrackerConfig
 import com.grumpyshoe.module.permissionmanager.PermissionManager
@@ -29,46 +36,62 @@ import com.grumpyshoe.module.permissionmanager.impl.PermissionManagerImpl
  */
 class LocationManagerImpl : LocationManager {
 
-    private val REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION = 123
-    private val REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER = 345
-    private val REQUEST_CHECK_SETTINGS_FOR_LOCATION_TRACKKER = 234
     private var fusedLocationClient: FusedLocationProviderClient? = null
-    private var onLastLocationFound: ((Location) -> Unit)? = null
-    private var onNoLocationFound: (() -> Unit)? = null
-    private var onLocationChange: ((Location) -> Unit)? = null
     private var locationRequest: LocationRequest? = null
     private var lastTrackedLocation: Location? = null
     private var locationCallback: LocationCallback? = null
     private val permissionManager: PermissionManager = PermissionManagerImpl
+    private val locationLiveData = MutableLiveData<Location?>()
+    private lateinit var sharedPreferences: SharedPreferences
+    private var activity: Activity? = null
 
+    private fun initLocationManager(activity: Activity) {
 
-    /**
-     * get last known location
-     *
-     */
-    @SuppressLint("MissingPermission")
-    override fun getLastKnownPosition(activity: Activity, onLastLocationFound: ((Location) -> Unit)?, onNoLocationFound: (() -> Unit)?) {
+        this.activity = activity
+
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity)
 
         if (fusedLocationClient == null) {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity)
         }
-
-        this.onLastLocationFound = onLastLocationFound
-        this.onNoLocationFound = onNoLocationFound
-
-        permissionManager.checkPermissions(
-                activity = activity,
-                permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-                onPermissionResult = { permissionResult ->
-                    if(permissionResult.areAllGranted()) {
-                        getLastLocation()
-                    }
-                },
-                requestCode = REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION
-        )
-
     }
 
+    private fun checkIfLocationProviderIsEnabled(requestCode: Int): Boolean {
+        try {
+            val lm = activity?.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager;
+            var gps_enabled = false;
+            var network_enabled = false;
+
+            gps_enabled = lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER);
+            network_enabled = lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER);
+
+
+            if (!gps_enabled && !network_enabled) {
+
+                activity?.let {
+                    AlertDialog.Builder(it)
+                        .setMessage(R.string.locationmanager_gps_network_not_enabled)
+                        .setPositiveButton(R.string.locationmanager_open_location_settings) { _, _ ->
+                            run {
+                                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY);
+                                    addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+                                }
+                                it.startActivityForResult(intent, requestCode)
+                            }
+                        }
+                        .setNegativeButton(R.string.locationmanager_btn_cancel, null)
+                        .show();
+                }
+            } else {
+                return true
+            }
+        } catch (ex: Exception) {
+            Log.d(javaClass.simpleName, ex.message, ex)
+        }
+        return false
+    }
 
     /**
      * handle permission request result
@@ -78,18 +101,38 @@ class LocationManagerImpl : LocationManager {
         return permissionManager.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
+    /**
+     * get last known location
+     *
+     */
+    override fun getLastKnownLocation(activity: Activity): LiveData<Location?> {
+
+        initLocationManager(activity)
+
+        permissionManager.checkPermissions(
+            activity = activity,
+            permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+            onPermissionResult = { permissionResult ->
+                if (permissionResult.areAllGranted()) {
+
+                    if (checkIfLocationProviderIsEnabled(REQUEST_CHECK_SETTINGS_FOR_LAST_LOCATION)) {
+                        requestLastKnownLocation(activity)
+                    }
+                }
+            },
+            requestCode = REQUEST_PERMISSION_LAST_KNOWN_LOCATION
+        )
+
+        return locationLiveData
+    }
 
     /**
      * start location change tracker
      *
      */
-    override fun startLocationTracker(activity: Activity, config: LocationTrackerConfig, onLocationChange: (Location) -> Unit) {
+    override fun startLocationTracker(activity: Activity, config: LocationTrackerConfig): LiveData<Location?> {
 
-        this.onLocationChange = onLocationChange
-
-        if (fusedLocationClient == null) {
-            fusedLocationClient = LocationServices.getFusedLocationProviderClient(activity)
-        }
+        initLocationManager(activity)
 
         locationRequest = LocationRequest().apply {
             interval = config.interval
@@ -97,45 +140,20 @@ class LocationManagerImpl : LocationManager {
             priority = config.priority
         }
 
-        val builder = LocationSettingsRequest.Builder()
-                .addLocationRequest(locationRequest!!)
-
-        val client: SettingsClient = LocationServices.getSettingsClient(activity)
-        val task: Task<LocationSettingsResponse> = client.checkLocationSettings(builder.build())
-
-        task.addOnSuccessListener { locationSettingsResponse ->
-            // All location settings are satisfied. The client can initialize
-            // location requests here.
-            // ...
-
-
-            permissionManager.checkPermissions(
-                    activity = activity,
-                    permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-                    onPermissionResult = { permissionResult ->
-                        if(permissionResult.areAllGranted()) {
-                            requestLocationUpdates()
-                        }
-                    },
-                    requestCode = REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER
-            )
-        }
-
-        task.addOnFailureListener { exception ->
-            if (exception is ResolvableApiException) {
-                // Location settings are not satisfied, but this can be fixed
-                // by showing the user a dialog.
-                try {
-                    // Show the dialog by calling startResolutionForResult(),
-                    // and check the result in onActivityResult().
-                    exception.startResolutionForResult(activity, REQUEST_CHECK_SETTINGS_FOR_LOCATION_TRACKKER)
-                } catch (sendEx: IntentSender.SendIntentException) {
-                    // Ignore the error.
+        permissionManager.checkPermissions(
+            activity = activity,
+            permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+            onPermissionResult = { permissionResult ->
+                if (permissionResult.areAllGranted()) {
+                    if (checkIfLocationProviderIsEnabled(REQUEST_CHECK_SETTINGS_FOR_LOCATION_TRACKER)) {
+                        requestLocationUpdates()
+                    }
                 }
-            }
-        }
+            },
+            requestCode = REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER
+        )
+        return locationLiveData
     }
-
 
     /**
      * stop location change tracker
@@ -147,73 +165,20 @@ class LocationManagerImpl : LocationManager {
         }
     }
 
-
     /**
-     * execute las location request
+     * execute location change updates
      *
      */
     @SuppressLint("MissingPermission")
-    private fun getLastLocation() {
+    private fun requestLastKnownLocation(activity: Activity?) {
+
+        // post last known location
         fusedLocationClient
-                ?.lastLocation
-                ?.addOnSuccessListener { location: Location? ->
-                    if (location != null) {
-                        onLastLocationFound?.invoke(location)
-                    } else {
-                        onNoLocationFound?.invoke()
-                    }
-                } ?: onNoLocationFound?.invoke()
+            ?.lastLocation
+            ?.addOnSuccessListener { location: Location? ->
+                locationLiveData.postValue(location)
+            } ?: locationLiveData.postValue(null)
     }
-
-
-//    /**
-//     * check for required permissions
-//     *
-//     */
-//    private fun checkPermissionIsGranted(activity: Activity, permissionList: Array<String>, requestCode: Int): Boolean? {
-//
-//        val notGrantedPermissionList = mutableListOf<String>()
-//        permissionList.forEachIndexed { index, permission ->
-//            if (ContextCompat.checkSelfPermission(activity, permission) != PackageManager.PERMISSION_GRANTED){
-//                notGrantedPermissionList.add(permission)
-//            }
-//        }
-//
-//        if (notGrantedPermissionList.isNotEmpty()) {
-//
-//            // Should we show an explanation?
-//            if (ActivityCompat.shouldShowRequestPermissionRationale(activity, notGrantedPermissionList.get(0))) {
-//
-//                Toast.makeText(activity.applicationContext, "Needed", Toast.LENGTH_SHORT).show()
-//
-//                ActivityCompat.requestPermissions(activity, notGrantedPermissionList.toTypedArray(), requestCode)
-//
-//                // Show an explanation to the user *asynchronously* -- don't block
-//                // this thread waiting for the user's response! After the user
-//                // sees the explanation, try again to request the permission.
-//            } else {
-//                // No explanation needed, we can request the permission.
-//                ActivityCompat.requestPermissions(activity, permissionList, requestCode)
-//
-//                // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
-//                // app-defined int constant. The callback method gets the
-//                // result of the request.
-//            }
-//
-//            return null
-//        } else {
-//            // Permission has already been granted
-//            if (requestCode == REQUEST_PERMISSION_FINE_LOCATION_FOR_LAST_POSITION) {
-//                getLastLocation()
-//            } else if (requestCode == REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER) {
-//                requestLocationUpdates()
-//            }
-//            return true
-//
-//        }
-//
-//    }
-
 
     /**
      * execute location change updates
@@ -222,23 +187,31 @@ class LocationManagerImpl : LocationManager {
     @SuppressLint("MissingPermission")
     private fun requestLocationUpdates() {
 
+        // post last known location
+        fusedLocationClient
+            ?.lastLocation
+            ?.addOnSuccessListener { location: Location? ->
+                locationLiveData.postValue(location)
+            }
+
+        // init callback
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult?) {
                 locationResult ?: return
                 for (location in locationResult.locations) {
                     if (location.latitude != lastTrackedLocation?.latitude
-                            || location.longitude != lastTrackedLocation?.longitude
-                            || location.accuracy != lastTrackedLocation?.accuracy) {
-                        onLocationChange?.invoke(location)
+                        || location.longitude != lastTrackedLocation?.longitude
+                        || location.accuracy != lastTrackedLocation?.accuracy
+                    ) {
+                        locationLiveData.postValue(location)
                         lastTrackedLocation = location
                     }
                 }
             }
         }
 
-
-        fusedLocationClient?.requestLocationUpdates(locationRequest, locationCallback, null /* Looper */)
-
+        // start location updates
+        fusedLocationClient?.requestLocationUpdates(locationRequest, locationCallback, null)
     }
 
 
@@ -246,11 +219,24 @@ class LocationManagerImpl : LocationManager {
      * handle onActivityResult for location settings resolver
      *
      */
+    @SuppressLint("ApplySharedPref")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean? {
-        if (requestCode == REQUEST_CHECK_SETTINGS_FOR_LOCATION_TRACKKER) {
+        return if (requestCode == REQUEST_CHECK_SETTINGS_FOR_LAST_LOCATION && resultCode == PackageManager.PERMISSION_GRANTED) {
+            requestLastKnownLocation(this.activity)
+            true
+        } else if (requestCode == REQUEST_CHECK_SETTINGS_FOR_LOCATION_TRACKER && resultCode == PackageManager.PERMISSION_GRANTED) {
             requestLocationUpdates()
-            return true
+            true
+        } else {
+            false
         }
-        return false
+    }
+
+    companion object {
+        private const val REQUEST_PERMISSION_LAST_KNOWN_LOCATION = 123
+        private const val REQUEST_PERMISSION_FINE_LOCATION_FOR_LOCATION_TRACKER = 345
+
+        private const val REQUEST_CHECK_SETTINGS_FOR_LOCATION_TRACKER = 234
+        private const val REQUEST_CHECK_SETTINGS_FOR_LAST_LOCATION = 549
     }
 }

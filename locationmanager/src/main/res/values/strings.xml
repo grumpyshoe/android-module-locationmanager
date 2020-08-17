@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Locationmanager</string>
+    <string name="locationmanager_gps_network_not_enabled">Location Provider is not enabled. This Service is required otherwise no results will be posted.</string>
+    <string name="locationmanager_open_location_settings">Settings</string>
+    <string name="locationmanager_btn_cancel">Cancel</string>
 </resources>

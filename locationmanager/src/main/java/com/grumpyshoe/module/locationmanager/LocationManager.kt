@@ -3,6 +3,7 @@ package com.grumpyshoe.module.locationmanager
 import android.app.Activity
 import android.content.Intent
 import android.location.Location
+import androidx.lifecycle.LiveData
 import com.grumpyshoe.module.locationmanager.models.LocationTrackerConfig
 
 
@@ -16,34 +17,30 @@ import com.grumpyshoe.module.locationmanager.models.LocationTrackerConfig
  */
 interface LocationManager {
 
-
     /**
      * get last known location
      *
+     * this method only updates once it' value
      */
-    fun getLastKnownPosition(activity: Activity, onLastLocationFound: ((Location) -> Unit)?, onNoLocationFound: (() -> Unit)?)
+    fun getLastKnownLocation(activity: Activity): LiveData<Location?>
 
+    /**
+     * start location tracker
+     *
+     */
+    fun startLocationTracker(activity: Activity, config: LocationTrackerConfig = LocationTrackerConfig()): LiveData<Location?>
+
+    /**
+     * stop location tracker
+     *
+     */
+    fun stopLocationTracker()
 
     /**
      * handle permission request result
      *
      */
     fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean?
-
-
-    /**
-     * start location change tracker
-     *
-     */
-    fun startLocationTracker(activity: Activity, config: LocationTrackerConfig, onLocationChange: (Location) -> Unit)
-
-
-    /**
-     * stop location change tracker
-     *
-     */
-    fun stopLocationTracker()
-
 
     /**
      * handle onActivityResult for location settings resolver
