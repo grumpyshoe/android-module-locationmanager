@@ -22,13 +22,13 @@ interface LocationManager {
      *
      * this method only updates once it' value
      */
-    fun getLastKnownLocation(activity: Activity): LiveData<Location?>
+    fun getLastKnownLocation(activity: Activity, checkProviderEnabled: Boolean = true): LiveData<Location?>
 
     /**
      * start location tracker
      *
      */
-    fun startLocationTracker(activity: Activity, config: LocationTrackerConfig = LocationTrackerConfig()): LiveData<Location?>
+    fun startLocationTracker(activity: Activity, config: LocationTrackerConfig = LocationTrackerConfig(), checkProviderEnabled: Boolean = true): LiveData<Location?>
 
     /**
      * stop location tracker

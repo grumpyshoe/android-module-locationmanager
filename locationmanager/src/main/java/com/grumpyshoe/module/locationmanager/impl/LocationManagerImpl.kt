@@ -105,7 +105,7 @@ class LocationManagerImpl : LocationManager {
      * get last known location
      *
      */
-    override fun getLastKnownLocation(activity: Activity): LiveData<Location?> {
+    override fun getLastKnownLocation(activity: Activity, checkProviderEnabled: Boolean): LiveData<Location?> {
 
         initLocationManager(activity)
 
@@ -114,8 +114,9 @@ class LocationManagerImpl : LocationManager {
             permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
             onPermissionResult = { permissionResult ->
                 if (permissionResult.areAllGranted()) {
-
-                    if (checkIfLocationProviderIsEnabled(REQUEST_CHECK_SETTINGS_FOR_LAST_LOCATION)) {
+                    if (checkProviderEnabled && checkIfLocationProviderIsEnabled(REQUEST_CHECK_SETTINGS_FOR_LAST_LOCATION)) {
+                        requestLastKnownLocation(activity)
+                    } else {
                         requestLastKnownLocation(activity)
                     }
                 }
@@ -130,7 +131,7 @@ class LocationManagerImpl : LocationManager {
      * start location change tracker
      *
      */
-    override fun startLocationTracker(activity: Activity, config: LocationTrackerConfig): LiveData<Location?> {
+    override fun startLocationTracker(activity: Activity, config: LocationTrackerConfig, checkProviderEnabled: Boolean): LiveData<Location?> {
 
         initLocationManager(activity)
 
@@ -145,7 +146,9 @@ class LocationManagerImpl : LocationManager {
             permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
             onPermissionResult = { permissionResult ->
                 if (permissionResult.areAllGranted()) {
-                    if (checkIfLocationProviderIsEnabled(REQUEST_CHECK_SETTINGS_FOR_LOCATION_TRACKER)) {
+                    if (checkProviderEnabled && checkIfLocationProviderIsEnabled(REQUEST_CHECK_SETTINGS_FOR_LOCATION_TRACKER)) {
+                        requestLocationUpdates()
+                    } else {
                         requestLocationUpdates()
                     }
                 }
