@@ -10,4 +10,7 @@ import com.google.android.gms.location.LocationRequest
  * @author   grumpyshoe
  *
  */
-data class LocationTrackerConfig(val interval: Long = 10000, val fastestInterval: Long = 5000L, val priority: Int = LocationRequest.PRIORITY_HIGH_ACCURACY)
+data class LocationTrackerConfig(
+    val interval: Long = 10000,
+    val fastestInterval: Long = 5000L,
+    val priority: Int = LocationRequest.PRIORITY_HIGH_ACCURACY)

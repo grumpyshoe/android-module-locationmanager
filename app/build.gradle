@@ -27,9 +27,4 @@ dependencies {
     implementation libs.appcompatv7
     implementation libs.constraint_layout
     implementation project(':locationmanager')
-
-    testImplementation libs.junit
-
-    androidTestImplementation libs.test_runner
-    androidTestImplementation libs.espresso_core
 }

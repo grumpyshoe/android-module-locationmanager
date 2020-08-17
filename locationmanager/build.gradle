@@ -32,11 +32,7 @@ dependencies {
     implementation libs.play_services_location
     implementation libs.kotlin
     implementation libs.permission_manager
-
-    testImplementation libs.junit
-
-    androidTestImplementation libs.test_runner
-    androidTestImplementation libs.espresso_core
+    implementation libs.preferences
 }
 
 repositories {

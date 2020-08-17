@@ -1,13 +1,13 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    ext.kotlin_version = '1.2.50'
+    ext.kotlin_version = '1.3.72'
     repositories {
         google()
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.1.4'
+        classpath 'com.android.tools.build:gradle:4.0.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -25,33 +25,28 @@ allprojects {
     ext {
 
         application_id = "com.grumpyshoe.modules.locationmanager.sample"
-        compile_sdk_version = 27
+        compile_sdk_version = 29
         min_sdk_version = 16
-        target_sdk_version = 27
-        build_tools_version = "27.0.3"
-        version_code = 2
-        version_name = "1.1.0"
+        target_sdk_version = 29
+        build_tools_version = "29.0.3"
+        version_code = 3
+        version_name = "1.2.0"
 
         support_version = "27.1.1"
 
         libs = [
 
                 // google support
-                appcompatv7           : ("com.android.support:appcompat-v7:$support_version"),
+                appcompatv7           : ("androidx.appcompat:appcompat:1.1.0"),
 
                 // play services
                 play_services_location: ("com.google.android.gms:play-services-location:15.0.1"),
 
-                // Tests
-                junit                 : ("junit:junit:4.12"),
-                test_runner           : ("com.android.support.test:runner:1.0.2"),
-                espresso_core         : ("com.android.support.test.espresso:espresso-core:3.0.2"),
-
                 // other
-                kotlin                : ("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"),
-                anko                  : ("org.jetbrains.anko:anko-support-v4:0.10.5"),
-                constraint_layout     : ("com.android.support.constraint:constraint-layout:1.1.2"),
-                permission_manager    : ("com.github.grumpyshoe:android-module-permissionmanager:1.2.0")
+                kotlin                : ("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"),
+                constraint_layout     : ("androidx.constraintlayout:constraintlayout:1.1.3"),
+                permission_manager    : ("com.github.grumpyshoe:android-module-permissionmanager:1.2.0"),
+                preferences           : ("androidx.preference:preference:1.1.1")
 
         ]
     }
